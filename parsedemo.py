@@ -1,15 +1,25 @@
-import requests, re, json, re
+import requests, re, json, re, time
 import unicodecsv as csv
+from multiprocessing.pool import ThreadPool as Pool
 from bs4 import BeautifulSoup
 
+# Default Values
+start_time = time.time()
 iterator = 1
-headerList = ['S No.', 'AC No', 'Part No', 'Section No', 'Serial No', 'First Name', 'Name (Hindi)', 'Father/ Husband\'s Name', 'Father/ Husband\'s Name (Hindi)', 'Age', 'Gender', 'EPIC No']
+notFoundCount = 0
+headerList = ['AC No', 'Part No', 'Section No', 'Serial No', 'First Name', 'Name (Hindi)', 'Father/ Husband\'s Name', 'Father/ Husband\'s Name (Hindi)', 'Age', 'Gender', 'EPIC No']
 
+'''
+    This function extracts the hidden input fields injected by ASP.net
+'''
 def extractHiddenFields(formParmas, soup):
     for inputType in soup.find_all('input'):
         formParams[inputType.get('name')] = inputType.get('value')
     return formParams
 
+'''
+    This function sets extra form fields required for ASP form submissions
+'''
 def setDefaultFormFields(formParams):
     formParams['RdlSearch'] = 0
     formParams['__EVENTARGUMENT'] = ''
@@ -20,7 +30,8 @@ def setDefaultFormFields(formParams):
     return formParams
 
 def parseData(epicNo):
-    global iterator, formParams, headerList
+    global iterator, formParams, headerList, notFoundCount
+    print "Finding data for Epic No", epicNo
     response = requests.get("http://164.100.180.4/searchengine/SearchEngineEnglish.aspx")
     soup = BeautifulSoup(response.text, 'lxml')
 
@@ -50,28 +61,36 @@ def parseData(epicNo):
             dataRow = dateTable.findChildren(['tr'])[1]
             dataCell = dataRow.findChildren('td')
 
-            # Writer headers
-            if iterator == 1:
-                csvWriter.writerow(headerList)
             dataList = []
             dataCell.pop(0)
             for cell in dataCell:
                 value = "" + cell.string 
                 dataList.append(cell.string)
-            dataList.insert(0, iterator)
             print dataList
             csvWriter.writerow(dataList)
         else:
-                 notFound   = [iterator]
-                 notFound += ["Not Found"] * 10
+                 notFoundCount += 0
+                 notFound   = ["Not Found"] * 10
                  notFound.append(epicNo)
                  csvWriter.writerow(notFound)
 
 with open("epicNoList.txt", "r") as filestream:
     for line in filestream:
         epicNoList = line.split(",")
+
+pool_size = 8
+pool = Pool(pool_size)
+
+with open('data.csv', 'w') as csvHeaderWriterFile:
+        csvHeaderWriter = csv.writer(csvHeaderWriterFile)
+        csvHeaderWriter.writerow(headerList)
+
 for epicNo in epicNoList:
-    print "Finding data for Epic No", epicNo
-    if iterator>9:
-        parseData(epicNo)
-    iterator = iterator + 1
+    pool.apply_async(parseData, (epicNo,))
+        # parseData(epicNo)
+
+print("--- %s seconds ---" % round(time.time() - start_time, 2))
+print "Accuracy :", 100 * float(notFoundCount)/float(len(epicNoList))
+pool.close()
+pool.join()
+
