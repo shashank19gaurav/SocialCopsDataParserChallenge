@@ -29,6 +29,9 @@ def setDefaultFormFields(formParams):
     formParams['ddlDistricts'] = 67
     return formParams
 
+'''
+    This function scraps data from the government website
+'''
 def parseData(epicNo):
     global iterator, formParams, headerList, notFoundCount
     print "Finding data for Epic No", epicNo
@@ -53,9 +56,11 @@ def parseData(epicNo):
     getVoterDetails = requests.post('http://164.100.180.4/searchengine/SearchEngineEnglish.aspx', data = finalFormParams)
     finalDetailsSoup = BeautifulSoup(getVoterDetails.text, 'lxml')
 
+    # Details received now write it to a file
     with open('data.csv', 'a') as csvWriterFile:
         csvWriter = csv.writer(csvWriterFile)
 
+        # Check if EPIC Number valid or not
         if(len(finalDetailsSoup.findChildren('table', {'id': 'gvSearchResult'}))) > 0:
             dateTable = finalDetailsSoup.findChildren('table', {'id': 'gvSearchResult'})[0]
             dataRow = dateTable.findChildren(['tr'])[1]
@@ -74,23 +79,26 @@ def parseData(epicNo):
                  notFound.append(epicNo)
                  csvWriter.writerow(notFound)
 
+# Read all parse EPIC Number from the parsed text files.
 with open("epicNoList.txt", "r") as filestream:
     for line in filestream:
         epicNoList = line.split(",")
 
+# Create a pool of size 8 for faster processing
 pool_size = 8
 pool = Pool(pool_size)
 
+# Write the headers
 with open('data.csv', 'w') as csvHeaderWriterFile:
         csvHeaderWriter = csv.writer(csvHeaderWriterFile)
         csvHeaderWriter.writerow(headerList)
 
+# Call the parse function to scrap the data
 for epicNo in epicNoList:
     pool.apply_async(parseData, (epicNo,))
-        # parseData(epicNo)
 
 print("--- %s seconds ---" % round(time.time() - start_time, 2))
-print "Accuracy :", 100 * float(notFoundCount)/float(len(epicNoList))
+print "Accuracy :", 100 * float(len(epicNoList) - notFoundCount)/float(len(epicNoList))
 pool.close()
 pool.join()
 
