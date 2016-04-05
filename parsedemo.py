@@ -1,4 +1,5 @@
 import requests, re, json
+import unicodecsv as csv
 from bs4 import BeautifulSoup
 
 def extractHiddenFields(formParmas, soup):
@@ -48,10 +49,22 @@ finalDetailsSoup = BeautifulSoup(getVoterDetails.text, 'lxml')
 
 dateTable = finalDetailsSoup.findChildren('table', {'id': 'gvSearchResult'})[0]
 dataRow = dateTable.findChildren(['tr'])[1]
-
 dataCell = dataRow.findChildren('td')
-for cell in dataCell:
-    value = cell.string
-    print "The value in this cell is %s" % value
+
+headerList = ['AC No', 'Part No', 'Section No', 'Serial No', 'First Name', 'Name (Hindi)', 'Father/ Husband\'s Name', 'Father/ Husband\'s Name (Hindi)', 'Age', 'Gender', 'EPIC No']
+
+with open('data.csv', 'w') as csvWriterFile:
+    csvWriter = csv.writer(csvWriterFile)
+    # Writer headers
+    csvWriter.writerow(headerList)
+
+    dataList = []
+    dataCell.pop(0)
+    for cell in dataCell:
+        value = "" + cell.string 
+        dataList.append(cell.string)
+        print "The value in this cell is %s" % value
+    print dataList
+    csvWriter.writerow(dataList)
 
 # Save it to csv
