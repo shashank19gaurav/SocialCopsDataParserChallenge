@@ -1,4 +1,4 @@
-import requests, re, json, re, time
+import requests, re, json,  time
 import unicodecsv as csv
 from multiprocessing.pool import ThreadPool as Pool
 from bs4 import BeautifulSoup
@@ -34,7 +34,7 @@ def setDefaultFormFields(formParams):
 '''
 def parseData(epicNo):
     global iterator, formParams, headerList, notFoundCount
-    print "Finding data for Epic No", epicNo
+    # print "Finding data for Epic No", epicNo
     response = requests.get("http://164.100.180.4/searchengine/SearchEngineEnglish.aspx")
     soup = BeautifulSoup(response.text, 'lxml')
 
@@ -71,7 +71,7 @@ def parseData(epicNo):
             for cell in dataCell:
                 value = "" + cell.string 
                 dataList.append(cell.string)
-            print dataList
+            # print dataList
             csvWriter.writerow(dataList)
         else:
                  notFoundCount += 0
@@ -83,6 +83,8 @@ def parseData(epicNo):
 with open("epicNoList.txt", "r") as filestream:
     for line in filestream:
         epicNoList = line.split(",")
+
+print "Please wait while the voter's list is being generated"
 
 # Create a pool of size 8 for faster processing
 pool_size = 8
@@ -97,8 +99,8 @@ with open('data.csv', 'w') as csvHeaderWriterFile:
 for epicNo in epicNoList:
     pool.apply_async(parseData, (epicNo,))
 
-print("--- %s seconds ---" % round(time.time() - start_time, 2))
-print "Accuracy :", 100 * float(len(epicNoList) - notFoundCount)/float(len(epicNoList))
 pool.close()
 pool.join()
-
+print "Voter's list generated"
+print("Approximate time taken --- %s seconds ---" % round(time.time() - start_time, 2))
+print "Accuracy :", 100 * float(len(epicNoList) - notFoundCount)/float(len(epicNoList))
